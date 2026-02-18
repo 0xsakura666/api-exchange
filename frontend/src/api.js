@@ -88,4 +88,29 @@ export async function getUpstreamModels() {
   return response.data
 }
 
+export async function deleteInvalidKeys() {
+  const response = await api.delete('/admin/keys/invalid/batch')
+  return response.data
+}
+
+export async function getTokens() {
+  const response = await api.get('/admin/tokens')
+  return response.data
+}
+
+export async function createToken(name) {
+  const response = await api.post('/admin/tokens', { name })
+  return response.data
+}
+
+export async function toggleToken(tokenId, enabled) {
+  const response = await api.put(`/admin/tokens/${tokenId}/toggle`, null, { params: { enabled } })
+  return response.data
+}
+
+export async function deleteToken(tokenId) {
+  const response = await api.delete(`/admin/tokens/${tokenId}`)
+  return response.data
+}
+
 export default api

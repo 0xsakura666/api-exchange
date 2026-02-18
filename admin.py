@@ -3,8 +3,9 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional, List
 import csv
 import io
+import secrets
 
-from models import APIKeyCreate, APIKeyImport, APIKeyRecord, APIKeyStats, ModelPricing, ModelPricingCreate
+from models import APIKeyCreate, APIKeyImport, APIKeyRecord, APIKeyStats, ModelPricing, ModelPricingCreate, AccessToken, AccessTokenCreate
 from config import get_settings
 from key_manager import key_manager
 from database import db
@@ -326,3 +327,44 @@ async def list_upstream_models(_: str = Depends(verify_admin_key)):
             
     except Exception as e:
         return {"categories": [], "total": 0, "error": str(e)}
+
+
+@router.get("/tokens", response_model=List[AccessToken])
+async def list_tokens(_: str = Depends(verify_admin_key)):
+    """获取所有对外访问令牌"""
+    return await db.get_all_access_tokens()
+
+
+@router.post("/tokens", response_model=AccessToken)
+async def create_token(
+    data: AccessTokenCreate,
+    _: str = Depends(verify_admin_key)
+):
+    """创建新的对外访问令牌"""
+    token = "sk-ex-" + secrets.token_urlsafe(32)
+    return await db.create_access_token(data.name, token)
+
+
+@router.put("/tokens/{token_id}/toggle")
+async def toggle_token(
+    token_id: int,
+    enabled: bool,
+    _: str = Depends(verify_admin_key)
+):
+    """启用/禁用访问令牌"""
+    success = await db.toggle_access_token(token_id, enabled)
+    if success:
+        return {"success": True}
+    raise HTTPException(status_code=404, detail="Token not found")
+
+
+@router.delete("/tokens/{token_id}")
+async def delete_token(
+    token_id: int,
+    _: str = Depends(verify_admin_key)
+):
+    """删除访问令牌"""
+    success = await db.delete_access_token(token_id)
+    if success:
+        return {"success": True}
+    raise HTTPException(status_code=404, detail="Token not found")

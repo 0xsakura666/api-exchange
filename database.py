@@ -4,7 +4,7 @@ from typing import List, Optional
 from datetime import datetime
 from contextlib import asynccontextmanager
 
-from models import APIKeyRecord, KeyStatus, APIKeyStats, ModelPricing
+from models import APIKeyRecord, KeyStatus, APIKeyStats, ModelPricing, AccessToken
 from config import get_settings
 
 
@@ -85,6 +85,18 @@ class Database:
                     "INSERT INTO model_pricing (model_pattern, price_per_request, description) VALUES (?, ?, ?)",
                     default_pricing
                 )
+            
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS access_tokens (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    token TEXT UNIQUE NOT NULL,
+                    enabled INTEGER DEFAULT 1,
+                    request_count INTEGER DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    last_used TIMESTAMP
+                )
+            """)
             
             await conn.commit()
     
@@ -315,6 +327,87 @@ class Database:
             cursor = await conn.execute(
                 "DELETE FROM model_pricing WHERE id = ?",
                 (pricing_id,)
+            )
+            await conn.commit()
+            return cursor.rowcount > 0
+    
+    async def create_access_token(self, name: str, token: str) -> AccessToken:
+        """创建访问令牌"""
+        async with self.get_connection() as conn:
+            cursor = await conn.execute(
+                "INSERT INTO access_tokens (name, token) VALUES (?, ?)",
+                (name, token)
+            )
+            await conn.commit()
+            return AccessToken(
+                id=cursor.lastrowid,
+                name=name,
+                token=token,
+                enabled=True,
+                request_count=0
+            )
+    
+    async def get_all_access_tokens(self) -> List[AccessToken]:
+        """获取所有访问令牌"""
+        async with self.get_connection() as conn:
+            cursor = await conn.execute(
+                "SELECT * FROM access_tokens ORDER BY created_at DESC"
+            )
+            rows = await cursor.fetchall()
+            return [
+                AccessToken(
+                    id=row["id"],
+                    name=row["name"],
+                    token=row["token"],
+                    enabled=bool(row["enabled"]),
+                    request_count=row["request_count"],
+                    created_at=datetime.fromisoformat(row["created_at"]) if row["created_at"] else datetime.now(),
+                    last_used=datetime.fromisoformat(row["last_used"]) if row["last_used"] else None
+                )
+                for row in rows
+            ]
+    
+    async def verify_access_token(self, token: str) -> Optional[AccessToken]:
+        """验证访问令牌是否有效"""
+        async with self.get_connection() as conn:
+            cursor = await conn.execute(
+                "SELECT * FROM access_tokens WHERE token = ? AND enabled = 1",
+                (token,)
+            )
+            row = await cursor.fetchone()
+            if row:
+                await conn.execute(
+                    "UPDATE access_tokens SET request_count = request_count + 1, last_used = ? WHERE id = ?",
+                    (datetime.now(), row["id"])
+                )
+                await conn.commit()
+                return AccessToken(
+                    id=row["id"],
+                    name=row["name"],
+                    token=row["token"],
+                    enabled=bool(row["enabled"]),
+                    request_count=row["request_count"],
+                    created_at=datetime.fromisoformat(row["created_at"]) if row["created_at"] else datetime.now(),
+                    last_used=datetime.fromisoformat(row["last_used"]) if row["last_used"] else None
+                )
+            return None
+    
+    async def toggle_access_token(self, token_id: int, enabled: bool) -> bool:
+        """启用/禁用访问令牌"""
+        async with self.get_connection() as conn:
+            cursor = await conn.execute(
+                "UPDATE access_tokens SET enabled = ? WHERE id = ?",
+                (1 if enabled else 0, token_id)
+            )
+            await conn.commit()
+            return cursor.rowcount > 0
+    
+    async def delete_access_token(self, token_id: int) -> bool:
+        """删除访问令牌"""
+        async with self.get_connection() as conn:
+            cursor = await conn.execute(
+                "DELETE FROM access_tokens WHERE id = ?",
+                (token_id,)
             )
             await conn.commit()
             return cursor.rowcount > 0

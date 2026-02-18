@@ -19,20 +19,26 @@ security = HTTPBearer(auto_error=False)
 
 
 async def verify_api_key(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)):
-    """验证 API Key（支持使用 admin_key 作为统一的访问密钥）"""
+    """验证 API Key（支持管理密钥或对外访问令牌）"""
     if not credentials:
         raise HTTPException(
             status_code=401,
             detail="Missing API key. Use Authorization: Bearer <your-key>"
         )
     
-    if credentials.credentials != settings.admin_key:
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid API key"
-        )
+    token = credentials.credentials
     
-    return credentials.credentials
+    if token == settings.admin_key:
+        return token
+    
+    access_token = await db.verify_access_token(token)
+    if access_token:
+        return token
+    
+    raise HTTPException(
+        status_code=401,
+        detail="Invalid API key"
+    )
 
 
 async def periodic_sync():

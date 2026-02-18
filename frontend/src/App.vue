@@ -142,6 +142,12 @@
                   同步: {{ syncResult.synced }}/{{ syncResult.total }}
                 </span>
                 <button
+                  @click="handleDeleteInvalidKeys"
+                  class="px-4 py-1 bg-red-600 text-white rounded-md hover:bg-red-700"
+                >
+                  清理无效Key
+                </button>
+                <button
                   @click="handleSyncAll"
                   :disabled="syncing"
                   class="px-4 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
@@ -485,9 +491,75 @@
           <!-- API Docs Tab -->
           <div v-if="activeTab === 'api'" class="p-6">
             <div class="space-y-6">
-              <!-- API Config -->
+              <!-- Token Management -->
               <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
-                <h3 class="text-xl font-bold text-blue-800 mb-4">你的聚合 API 配置</h3>
+                <h3 class="text-xl font-bold text-blue-800 mb-4">访问令牌管理</h3>
+                
+                <!-- Create Token -->
+                <div class="flex gap-2 mb-4">
+                  <input
+                    v-model="newTokenName"
+                    type="text"
+                    placeholder="输入令牌名称（如：Cursor、测试）"
+                    class="flex-1 border rounded px-3 py-2"
+                    @keyup.enter="handleCreateToken"
+                  />
+                  <button
+                    @click="handleCreateToken"
+                    class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                  >
+                    生成新令牌
+                  </button>
+                </div>
+
+                <!-- Tokens List -->
+                <div v-if="tokens.length > 0" class="space-y-2 mb-4">
+                  <div
+                    v-for="token in tokens"
+                    :key="token.id"
+                    :class="[
+                      'border rounded-lg p-3 cursor-pointer transition',
+                      selectedToken?.id === token.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-300'
+                    ]"
+                    @click="selectedToken = token"
+                  >
+                    <div class="flex justify-between items-center">
+                      <div>
+                        <span class="font-medium">{{ token.name }}</span>
+                        <span :class="token.enabled ? 'text-green-600' : 'text-red-600'" class="ml-2 text-sm">
+                          {{ token.enabled ? '启用' : '禁用' }}
+                        </span>
+                        <span class="text-gray-400 text-sm ml-2">请求次数: {{ token.request_count }}</span>
+                      </div>
+                      <div class="flex gap-2">
+                        <button
+                          @click.stop="handleToggleToken(token)"
+                          :class="token.enabled ? 'text-orange-600 hover:text-orange-800' : 'text-green-600 hover:text-green-800'"
+                          class="text-sm"
+                        >
+                          {{ token.enabled ? '禁用' : '启用' }}
+                        </button>
+                        <button
+                          @click.stop="handleDeleteToken(token)"
+                          class="text-red-600 hover:text-red-800 text-sm"
+                        >
+                          删除
+                        </button>
+                      </div>
+                    </div>
+                    <div class="mt-2 font-mono text-sm text-gray-600 break-all">
+                      {{ token.token }}
+                    </div>
+                  </div>
+                </div>
+                <div v-else class="text-gray-500 text-center py-4 border rounded-lg">
+                  还没有访问令牌，点击上方按钮创建一个
+                </div>
+              </div>
+
+              <!-- API Config -->
+              <div v-if="selectedToken" class="bg-green-50 border border-green-200 rounded-lg p-6">
+                <h3 class="text-xl font-bold text-green-800 mb-4">你的聚合 API 配置</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label class="block text-sm font-medium text-gray-600 mb-1">API Base URL</label>
@@ -499,23 +571,23 @@
                       />
                       <button
                         @click="copyToClipboard(apiBaseUrl)"
-                        class="bg-blue-600 text-white px-3 py-2 rounded-r hover:bg-blue-700"
+                        class="bg-green-600 text-white px-3 py-2 rounded-r hover:bg-green-700"
                       >
                         复制
                       </button>
                     </div>
                   </div>
                   <div>
-                    <label class="block text-sm font-medium text-gray-600 mb-1">API Key</label>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">API Key ({{ selectedToken.name }})</label>
                     <div class="flex">
                       <input
-                        :value="adminKey"
+                        :value="selectedToken.token"
                         readonly
                         class="flex-1 bg-white border rounded-l px-3 py-2 font-mono text-sm"
                       />
                       <button
-                        @click="copyToClipboard(adminKey)"
-                        class="bg-blue-600 text-white px-3 py-2 rounded-r hover:bg-blue-700"
+                        @click="copyToClipboard(selectedToken.token)"
+                        class="bg-green-600 text-white px-3 py-2 rounded-r hover:bg-green-700"
                       >
                         复制
                       </button>
@@ -525,11 +597,11 @@
               </div>
 
               <!-- Quick Start -->
-              <div>
+              <div v-if="selectedToken">
                 <h3 class="text-lg font-bold mb-4">快速开始</h3>
                 <div class="bg-gray-900 rounded-lg p-4 overflow-x-auto">
                   <pre class="text-green-400 text-sm"><code>curl {{ apiBaseUrl }}/chat/completions \
-  -H "Authorization: Bearer {{ adminKey }}" \
+  -H "Authorization: Bearer {{ selectedToken.token }}" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "gemini-3-pro-preview-y",
@@ -540,7 +612,7 @@
               </div>
 
               <!-- Client Config -->
-              <div>
+              <div v-if="selectedToken">
                 <h3 class="text-lg font-bold mb-4">客户端配置示例</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div class="border rounded-lg p-4">
@@ -548,7 +620,7 @@
                     <p class="text-sm text-gray-600 mb-2">在设置中配置：</p>
                     <div class="bg-gray-100 rounded p-2 text-sm font-mono">
                       <p>API Base: <span class="text-blue-600">{{ apiBaseUrl }}</span></p>
-                      <p>API Key: <span class="text-blue-600">{{ adminKey }}</span></p>
+                      <p>API Key: <span class="text-blue-600">{{ selectedToken.token }}</span></p>
                     </div>
                   </div>
                   <div class="border rounded-lg p-4">
@@ -558,7 +630,7 @@
 
 client = OpenAI(
     base_url="{{ apiBaseUrl }}",
-    api_key="{{ adminKey }}"
+    api_key="{{ selectedToken.token }}"
 )
 
 response = client.chat.completions.create(
@@ -649,7 +721,12 @@ import {
   checkModelPrice,
   syncAllKeys,
   syncSingleKey,
-  getUpstreamModels
+  getUpstreamModels,
+  deleteInvalidKeys,
+  getTokens,
+  createToken,
+  toggleToken,
+  deleteToken
 } from './api'
 
 const isLoggedIn = ref(false)
@@ -679,6 +756,11 @@ const loadingModels = ref(false)
 // API 文档
 const apiBaseUrl = ref(window.location.origin + '/v1')
 
+// 访问令牌
+const tokens = ref([])
+const newTokenName = ref('')
+const selectedToken = ref(null)
+
 // 分页
 const currentPage = ref(1)
 const pageSize = ref(50)
@@ -699,7 +781,7 @@ async function login() {
 }
 
 async function loadData() {
-  await Promise.all([loadStats(), loadKeys(), loadPricing()])
+  await Promise.all([loadStats(), loadKeys(), loadPricing(), loadTokens()])
 }
 
 async function loadStats() {
@@ -863,6 +945,68 @@ function copyToClipboard(text) {
   }).catch(() => {
     prompt('请手动复制:', text)
   })
+}
+
+async function handleDeleteInvalidKeys() {
+  if (!confirm('确定要删除所有无效的 Key（包含空格或不以 sk- 开头的）吗？')) {
+    return
+  }
+  try {
+    const result = await deleteInvalidKeys()
+    alert(`已删除 ${result.deleted} 个无效 Key`)
+    await loadData()
+  } catch (e) {
+    alert('删除失败: ' + e.message)
+  }
+}
+
+async function loadTokens() {
+  try {
+    tokens.value = await getTokens()
+    if (tokens.value.length > 0 && !selectedToken.value) {
+      selectedToken.value = tokens.value[0]
+    }
+  } catch (e) {
+    console.error('Failed to load tokens:', e)
+  }
+}
+
+async function handleCreateToken() {
+  if (!newTokenName.value.trim()) {
+    alert('请输入令牌名称')
+    return
+  }
+  try {
+    const token = await createToken(newTokenName.value.trim())
+    tokens.value.unshift(token)
+    selectedToken.value = token
+    newTokenName.value = ''
+    alert('令牌创建成功！请复制保存，此令牌只显示一次。')
+  } catch (e) {
+    alert('创建失败: ' + e.message)
+  }
+}
+
+async function handleToggleToken(token) {
+  try {
+    await toggleToken(token.id, !token.enabled)
+    token.enabled = !token.enabled
+  } catch (e) {
+    alert('操作失败: ' + e.message)
+  }
+}
+
+async function handleDeleteToken(token) {
+  if (!confirm(`确定要删除令牌 "${token.name}" 吗？`)) return
+  try {
+    await deleteToken(token.id)
+    tokens.value = tokens.value.filter(t => t.id !== token.id)
+    if (selectedToken.value?.id === token.id) {
+      selectedToken.value = tokens.value[0] || null
+    }
+  } catch (e) {
+    alert('删除失败: ' + e.message)
+  }
 }
 
 onMounted(() => {

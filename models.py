@@ -97,3 +97,19 @@ class UsageCheckResponse(BaseModel):
     total: Optional[float] = None
     valid: bool = True
     error: Optional[str] = None
+
+
+class AccessToken(BaseModel):
+    """对外访问令牌"""
+    id: Optional[int] = None
+    name: str
+    token: str
+    enabled: bool = True
+    request_count: int = 0
+    created_at: datetime = Field(default_factory=datetime.now)
+    last_used: Optional[datetime] = None
+
+
+class AccessTokenCreate(BaseModel):
+    """创建访问令牌"""
+    name: str
