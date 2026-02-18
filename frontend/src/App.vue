@@ -277,20 +277,13 @@
           <div v-if="activeTab === 'models'" class="p-6">
             <div class="flex justify-between items-center mb-4">
               <h3 class="text-lg font-medium">
-                上游支持的模型 
+                支持的模型 
                 <span class="text-gray-500 text-sm">(共 {{ modelsTotal }} 个)</span>
               </h3>
-              <button
-                @click="loadModels"
-                :disabled="loadingModels"
-                class="px-4 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-              >
-                {{ loadingModels ? '加载中...' : '刷新' }}
-              </button>
             </div>
 
             <div v-if="modelCategories.length === 0 && !loadingModels" class="text-gray-500 text-center py-8">
-              暂无模型数据，请先导入 API Key
+              加载中...
             </div>
 
             <div v-else class="space-y-6">

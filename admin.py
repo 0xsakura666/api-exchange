@@ -222,92 +222,53 @@ async def check_model_price(
 
 
 
+SUPPORTED_MODELS = [
+    {"category": "Gemini", "models": [
+        "gemini-3-pro-preview-y",
+        "gemini-3-pro-preview-u",
+        "gemini-2.5-pro-preview",
+        "gemini-2.5-flash-preview",
+        "gemini-2.0-flash-exp",
+    ]},
+    {"category": "Claude", "models": [
+        "claude-sonnet-4-20250514",
+        "claude-opus-4-20250514",
+    ]},
+    {"category": "GPT", "models": [
+        "gpt-4o",
+        "gpt-4o-mini",
+    ]},
+    {"category": "DeepSeek", "models": [
+        "deepseek-chat",
+        "deepseek-reasoner",
+    ]},
+]
+
+
 @router.get("/models")
 async def list_upstream_models(_: str = Depends(verify_admin_key)):
-    """获取上游支持的模型列表，分类并显示价格"""
-    import httpx
-    from config import get_settings
+    """获取支持的模型列表（固定列表）"""
+    categories = []
+    total = 0
     
-    settings = get_settings()
-    
-    all_keys = await db.get_all_keys("active")
-    if not all_keys:
-        return {"categories": [], "total": 0, "error": "No keys available"}
-    
-    response = None
-    for key in all_keys[:20]:
-        try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                response = await client.get(
-                    f"{settings.upstream_base_url}/models",
-                    headers={"Authorization": f"Bearer {key.key}"}
-                )
-                if response.status_code == 200:
-                    break
-        except:
-            continue
-    
-    if not response or response.status_code != 200:
-        return {"categories": [], "total": 0, "error": "Failed to fetch models"}
-    
-    try:
-        data = response.json()
-        models = data.get("data", [])
-        
-        categories = {}
-        for model in models:
-            model_id = model.get("id", "")
-            
-            if model_id.lower().startswith("gemini"):
-                category = "Gemini"
-            elif model_id.lower().startswith("claude"):
-                if "opus" in model_id.lower():
-                    category = "Claude Opus"
-                elif "sonnet" in model_id.lower():
-                    category = "Claude Sonnet"
-                else:
-                    category = "Claude"
-            elif model_id.lower().startswith("gpt"):
-                category = "GPT"
-            elif model_id.lower().startswith("deepseek"):
-                category = "DeepSeek"
-            else:
-                category = "Other"
-            
-            if category not in categories:
-                categories[category] = []
-            
+    for cat in SUPPORTED_MODELS:
+        models = []
+        for model_id in cat["models"]:
             price = await db.get_model_price(model_id)
-            
-            categories[category].append({
+            models.append({
                 "id": model_id,
-                "price": price,
-                "endpoints": model.get("supported_endpoint_types", [])
+                "price": price
             })
-        
-        category_order = ["Gemini", "Claude Opus", "Claude Sonnet", "GPT", "DeepSeek", "Other"]
-        sorted_categories = []
-        for cat in category_order:
-            if cat in categories:
-                sorted_categories.append({
-                    "name": cat,
-                    "models": sorted(categories[cat], key=lambda x: x["id"])
-                })
-        
-        for cat in categories:
-            if cat not in category_order:
-                sorted_categories.append({
-                    "name": cat,
-                    "models": sorted(categories[cat], key=lambda x: x["id"])
-                })
-        
-        return {
-            "categories": sorted_categories,
-            "total": len(models)
-        }
-        
-    except Exception as e:
-        return {"categories": [], "total": 0, "error": str(e)}
+            total += 1
+        categories.append({
+            "name": cat["category"],
+            "models": models
+        })
+    
+    return {
+        "categories": categories,
+        "total": total
+    }
 
 
 @router.get("/tokens", response_model=List[AccessToken])
