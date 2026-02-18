@@ -223,60 +223,46 @@ async def check_model_price(
 
 
 SUPPORTED_MODELS = [
-    {"category": "Gemini 3", "models": [
-        "gemini-3-pro-preview-y",
-        "gemini-3-pro-preview-u",
-        "gemini-3-pro-preview-v",
-        "gemini-3-pro-preview-h",
-        "gemini-3-pro-preview-S",
-        "gemini-3-pro-preview-cc",
-        "gemini-3-pro-preview-thinking-v",
-        "gemini-3-pro-image-preview-s",
-        "gemini-3-pro-image-preview-gg",
-        "gemini-3-flash-preview-S",
+    {"category": "Gemini 3 Pro", "models": [
+        {"id": "gemini-3-pro-preview-y", "price": 0.08},
+        {"id": "gemini-3-pro-preview-u", "price": 0.07},
+        {"id": "gemini-3-pro-preview-v", "price": 0.08},
+        {"id": "gemini-3-pro-preview-h", "price": 0.08},
+        {"id": "gemini-3-pro-preview-S", "price": 0.05},
+        {"id": "gemini-3-pro-preview-cc", "price": 0.06},
+    ]},
+    {"category": "Gemini 3 Flash", "models": [
+        {"id": "gemini-3-flash-preview-S", "price": 0.03},
     ]},
     {"category": "Gemini 2.5", "models": [
-        "gemini-2.5-pro-preview-p",
-        "gemini-2.5-flash-image-preview-s",
+        {"id": "gemini-2.5-pro-preview-p", "price": 0.036},
     ]},
-    {"category": "Claude Opus", "models": [
-        "claude-opus-4-6-k",
-        "claude-opus-4-6-thinking-k",
-        "claude-opus-4-5-20251101-k",
-        "claude-opus-4-5-20251101-thinking-k",
-    ]},
-    {"category": "Claude Sonnet", "models": [
-        "claude-sonnet-4-6-20260217-k",
-        "claude-sonnet-4-6-20260217-thinking-k",
-        "claude-sonnet-4-5-20250929-k",
-        "claude-sonnet-4-5-20250929-thinking-k",
+    {"category": "Claude", "models": [
+        {"id": "claude-opus-4-6-k", "price": 0.057},
+        {"id": "claude-sonnet-4-6-20260217-k", "price": 0.043},
     ]},
     {"category": "GPT", "models": [
-        "GPT-5.1-a",
-        "GPT-5.2-a",
+        {"id": "GPT-5.1-a", "price": 0.114},
     ]},
     {"category": "DeepSeek", "models": [
-        "DeepSeek-R1-a",
-        "DeepSeek-V1-a",
-        "DeepSeek-V3.1-a",
-        "DeepSeek-V3.2-a",
+        {"id": "DeepSeek-R1-a", "price": 0.05},
+        {"id": "DeepSeek-V3.1-a", "price": 0.05},
     ]},
 ]
 
 
 @router.get("/models")
 async def list_upstream_models(_: str = Depends(verify_admin_key)):
-    """获取支持的模型列表（固定列表）"""
+    """获取支持的模型列表（固定列表，价格已测试验证）"""
     categories = []
     total = 0
     
     for cat in SUPPORTED_MODELS:
         models = []
-        for model_id in cat["models"]:
-            price = await db.get_model_price(model_id)
+        for model in cat["models"]:
             models.append({
-                "id": model_id,
-                "price": price
+                "id": model["id"],
+                "price": model["price"]
             })
             total += 1
         categories.append({
