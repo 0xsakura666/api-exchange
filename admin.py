@@ -223,24 +223,43 @@ async def check_model_price(
 
 
 SUPPORTED_MODELS = [
-    {"category": "Gemini", "models": [
+    {"category": "Gemini 3", "models": [
         "gemini-3-pro-preview-y",
         "gemini-3-pro-preview-u",
-        "gemini-2.5-pro-preview",
-        "gemini-2.5-flash-preview",
-        "gemini-2.0-flash-exp",
+        "gemini-3-pro-preview-v",
+        "gemini-3-pro-preview-h",
+        "gemini-3-pro-preview-S",
+        "gemini-3-pro-preview-cc",
+        "gemini-3-pro-preview-thinking-v",
+        "gemini-3-pro-image-preview-s",
+        "gemini-3-pro-image-preview-gg",
+        "gemini-3-flash-preview-S",
     ]},
-    {"category": "Claude", "models": [
-        "claude-sonnet-4-20250514",
-        "claude-opus-4-20250514",
+    {"category": "Gemini 2.5", "models": [
+        "gemini-2.5-pro-preview-p",
+        "gemini-2.5-flash-image-preview-s",
+    ]},
+    {"category": "Claude Opus", "models": [
+        "claude-opus-4-6-k",
+        "claude-opus-4-6-thinking-k",
+        "claude-opus-4-5-20251101-k",
+        "claude-opus-4-5-20251101-thinking-k",
+    ]},
+    {"category": "Claude Sonnet", "models": [
+        "claude-sonnet-4-6-20260217-k",
+        "claude-sonnet-4-6-20260217-thinking-k",
+        "claude-sonnet-4-5-20250929-k",
+        "claude-sonnet-4-5-20250929-thinking-k",
     ]},
     {"category": "GPT", "models": [
-        "gpt-4o",
-        "gpt-4o-mini",
+        "GPT-5.1-a",
+        "GPT-5.2-a",
     ]},
     {"category": "DeepSeek", "models": [
-        "deepseek-chat",
-        "deepseek-reasoner",
+        "DeepSeek-R1-a",
+        "DeepSeek-V1-a",
+        "DeepSeek-V3.1-a",
+        "DeepSeek-V3.2-a",
     ]},
 ]
 
