@@ -230,9 +230,9 @@ sync_status = {
 
 
 @router.post("/sync")
-async def sync_all_usage(background_tasks: "BackgroundTasks", _: str = Depends(verify_admin_key)):
+async def sync_all_usage(_: str = Depends(verify_admin_key)):
     """同步所有 Keys 的远程余额（后台任务）"""
-    from fastapi import BackgroundTasks
+    import asyncio
     
     if sync_status["running"]:
         return {"message": "同步正在进行中", "status": sync_status}
@@ -247,7 +247,6 @@ async def sync_all_usage(background_tasks: "BackgroundTasks", _: str = Depends(v
         keys = await db.get_all_keys()
         sync_status["total"] = len(keys)
         
-        import asyncio
         batch_size = 50
         for i in range(0, len(keys), batch_size):
             batch = keys[i:i + batch_size]
@@ -267,7 +266,6 @@ async def sync_all_usage(background_tasks: "BackgroundTasks", _: str = Depends(v
         
         sync_status["running"] = False
     
-    import asyncio
     asyncio.create_task(do_sync())
     
     return {"message": "同步已启动", "status": sync_status}
