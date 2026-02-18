@@ -104,6 +104,17 @@
               >
                 批量导入
               </button>
+              <button
+                @click="activeTab = 'api'"
+                :class="[
+                  'px-6 py-3 text-sm font-medium',
+                  activeTab === 'api'
+                    ? 'border-b-2 border-blue-500 text-blue-600'
+                    : 'text-gray-500 hover:text-gray-700'
+                ]"
+              >
+                API 文档
+              </button>
             </nav>
           </div>
 
@@ -470,6 +481,152 @@
               </div>
             </div>
           </div>
+
+          <!-- API Docs Tab -->
+          <div v-if="activeTab === 'api'" class="p-6">
+            <div class="space-y-6">
+              <!-- API Config -->
+              <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                <h3 class="text-xl font-bold text-blue-800 mb-4">你的聚合 API 配置</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">API Base URL</label>
+                    <div class="flex">
+                      <input
+                        :value="apiBaseUrl"
+                        readonly
+                        class="flex-1 bg-white border rounded-l px-3 py-2 font-mono text-sm"
+                      />
+                      <button
+                        @click="copyToClipboard(apiBaseUrl)"
+                        class="bg-blue-600 text-white px-3 py-2 rounded-r hover:bg-blue-700"
+                      >
+                        复制
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">API Key</label>
+                    <div class="flex">
+                      <input
+                        :value="adminKey"
+                        readonly
+                        class="flex-1 bg-white border rounded-l px-3 py-2 font-mono text-sm"
+                      />
+                      <button
+                        @click="copyToClipboard(adminKey)"
+                        class="bg-blue-600 text-white px-3 py-2 rounded-r hover:bg-blue-700"
+                      >
+                        复制
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Quick Start -->
+              <div>
+                <h3 class="text-lg font-bold mb-4">快速开始</h3>
+                <div class="bg-gray-900 rounded-lg p-4 overflow-x-auto">
+                  <pre class="text-green-400 text-sm"><code>curl {{ apiBaseUrl }}/chat/completions \
+  -H "Authorization: Bearer {{ adminKey }}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gemini-3-pro-preview-y",
+    "messages": [{"role": "user", "content": "Hello!"}],
+    "stream": false
+  }'</code></pre>
+                </div>
+              </div>
+
+              <!-- Client Config -->
+              <div>
+                <h3 class="text-lg font-bold mb-4">客户端配置示例</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div class="border rounded-lg p-4">
+                    <h4 class="font-medium mb-2">Cursor / VS Code</h4>
+                    <p class="text-sm text-gray-600 mb-2">在设置中配置：</p>
+                    <div class="bg-gray-100 rounded p-2 text-sm font-mono">
+                      <p>API Base: <span class="text-blue-600">{{ apiBaseUrl }}</span></p>
+                      <p>API Key: <span class="text-blue-600">{{ adminKey }}</span></p>
+                    </div>
+                  </div>
+                  <div class="border rounded-lg p-4">
+                    <h4 class="font-medium mb-2">OpenAI Python SDK</h4>
+                    <div class="bg-gray-900 rounded p-2 text-sm">
+                      <pre class="text-green-400"><code>from openai import OpenAI
+
+client = OpenAI(
+    base_url="{{ apiBaseUrl }}",
+    api_key="{{ adminKey }}"
+)
+
+response = client.chat.completions.create(
+    model="gemini-3-pro-preview-y",
+    messages=[{"role": "user", "content": "Hello!"}]
+)</code></pre>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- API Reference -->
+              <div>
+                <h3 class="text-lg font-bold mb-4">API 接口说明</h3>
+                <div class="overflow-x-auto">
+                  <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                      <tr>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">接口</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">方法</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">说明</th>
+                      </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                      <tr>
+                        <td class="px-4 py-3 font-mono text-sm">/v1/chat/completions</td>
+                        <td class="px-4 py-3"><span class="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">POST</span></td>
+                        <td class="px-4 py-3 text-sm text-gray-600">Chat 补全（支持流式 stream: true）</td>
+                      </tr>
+                      <tr>
+                        <td class="px-4 py-3 font-mono text-sm">/v1/models</td>
+                        <td class="px-4 py-3"><span class="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">GET</span></td>
+                        <td class="px-4 py-3 text-sm text-gray-600">获取可用模型列表</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- Request Format -->
+              <div>
+                <h3 class="text-lg font-bold mb-4">请求格式</h3>
+                <div class="bg-gray-900 rounded-lg p-4 overflow-x-auto">
+                  <pre class="text-green-400 text-sm"><code>{
+  "model": "gemini-3-pro-preview-y",  // 必填，模型名称
+  "messages": [                        // 必填，消息列表
+    {"role": "system", "content": "You are a helpful assistant."},
+    {"role": "user", "content": "Hello!"}
+  ],
+  "stream": false,        // 可选，是否流式输出
+  "temperature": 0.7,     // 可选，温度 0-2
+  "max_tokens": 2048      // 可选，最大输出 token 数
+}</code></pre>
+                </div>
+              </div>
+
+              <!-- Notes -->
+              <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <h4 class="font-medium text-yellow-800 mb-2">注意事项</h4>
+                <ul class="text-sm text-yellow-700 list-disc list-inside space-y-1">
+                  <li>所有请求需要在 Header 中携带 <code class="bg-yellow-100 px-1">Authorization: Bearer YOUR_API_KEY</code></li>
+                  <li>模型名称会直接透传给上游，请确保使用正确的模型名</li>
+                  <li>每次请求会根据模型自动扣除对应额度</li>
+                  <li>当一个 Key 余额不足时，系统会自动切换到下一个可用 Key</li>
+                </ul>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </main>
@@ -518,6 +675,9 @@ const syncResult = ref(null)
 const modelCategories = ref([])
 const modelsTotal = ref(0)
 const loadingModels = ref(false)
+
+// API 文档
+const apiBaseUrl = ref(window.location.origin + '/v1')
 
 // 分页
 const currentPage = ref(1)
@@ -695,6 +855,14 @@ async function loadModels() {
   } finally {
     loadingModels.value = false
   }
+}
+
+function copyToClipboard(text) {
+  navigator.clipboard.writeText(text).then(() => {
+    alert('已复制到剪贴板')
+  }).catch(() => {
+    prompt('请手动复制:', text)
+  })
 }
 
 onMounted(() => {
