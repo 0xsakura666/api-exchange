@@ -83,8 +83,8 @@ class UsageChecker:
         
         return False
     
-    async def sync_all_keys(self, batch_size: int = 10) -> dict:
-        """同步所有 Key 的余额"""
+    async def sync_all_keys(self, batch_size: int = 50) -> dict:
+        """同步所有 Key 的余额（大批量并发）"""
         keys = await db.get_all_keys()
         results = {
             "total": len(keys),
@@ -107,7 +107,7 @@ class UsageChecker:
                     results["failed"] += 1
             
             if i + batch_size < len(keys):
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(0.2)
         
         return results
 
