@@ -18,8 +18,9 @@ export async function getStats() {
   return response.data
 }
 
-export async function getKeys(status = null) {
-  const params = status ? { status } : {}
+export async function getKeys(status = null, page = 1, pageSize = 50) {
+  const params = { page, page_size: pageSize }
+  if (status) params.status = status
   const response = await api.get('/admin/keys', { params })
   return response.data
 }

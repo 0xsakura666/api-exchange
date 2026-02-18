@@ -200,6 +200,53 @@
               </table>
             </div>
 
+            <!-- Pagination -->
+            <div v-if="totalPages > 1" class="mt-4 flex items-center justify-between">
+              <div class="text-sm text-gray-500">
+                共 {{ totalKeys }} 条，第 {{ currentPage }}/{{ totalPages }} 页
+              </div>
+              <div class="flex gap-2">
+                <button
+                  @click="goToPage(1)"
+                  :disabled="currentPage === 1"
+                  class="px-3 py-1 border rounded text-sm disabled:opacity-50"
+                >
+                  首页
+                </button>
+                <button
+                  @click="goToPage(currentPage - 1)"
+                  :disabled="currentPage === 1"
+                  class="px-3 py-1 border rounded text-sm disabled:opacity-50"
+                >
+                  上一页
+                </button>
+                <span class="px-3 py-1 text-sm">
+                  <input
+                    v-model.number="currentPage"
+                    type="number"
+                    min="1"
+                    :max="totalPages"
+                    class="w-16 border rounded px-2 py-1 text-center"
+                    @change="goToPage(currentPage)"
+                  />
+                </span>
+                <button
+                  @click="goToPage(currentPage + 1)"
+                  :disabled="currentPage === totalPages"
+                  class="px-3 py-1 border rounded text-sm disabled:opacity-50"
+                >
+                  下一页
+                </button>
+                <button
+                  @click="goToPage(totalPages)"
+                  :disabled="currentPage === totalPages"
+                  class="px-3 py-1 border rounded text-sm disabled:opacity-50"
+                >
+                  末页
+                </button>
+              </div>
+            </div>
+
             <!-- Add Key -->
             <div class="mt-6 border-t pt-6">
               <h3 class="text-lg font-medium mb-4">添加单个 Key</h3>
@@ -472,6 +519,12 @@ const modelCategories = ref([])
 const modelsTotal = ref(0)
 const loadingModels = ref(false)
 
+// 分页
+const currentPage = ref(1)
+const pageSize = ref(50)
+const totalKeys = ref(0)
+const totalPages = ref(0)
+
 async function login() {
   try {
     setAuthToken(adminKey.value)
@@ -499,9 +552,19 @@ async function loadStats() {
 
 async function loadKeys() {
   try {
-    keys.value = await getKeys(filterStatus.value)
+    const data = await getKeys(filterStatus.value, currentPage.value, pageSize.value)
+    keys.value = data.keys || []
+    totalKeys.value = data.total || 0
+    totalPages.value = data.total_pages || 0
   } catch (e) {
     console.error('Failed to load keys:', e)
+  }
+}
+
+function goToPage(page) {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page
+    loadKeys()
   }
 }
 
@@ -579,10 +642,16 @@ async function handleImport() {
 
   const keysToImport = lines.map(line => {
     const parts = line.trim().split(',')
-    const key = parts[0].trim()
+    // 去除所有空格
+    const key = parts[0].trim().replace(/\s+/g, '')
     const balance = parts[1] ? parseFloat(parts[1].trim()) : defaultBalance.value
     return { key, balance }
-  })
+  }).filter(item => item.key.startsWith('sk-'))
+
+  if (keysToImport.length === 0) {
+    alert('没有有效的 Key（Key 必须以 sk- 开头）')
+    return
+  }
 
   try {
     importResult.value = await importKeys(keysToImport)

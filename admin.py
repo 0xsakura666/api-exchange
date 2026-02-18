@@ -24,14 +24,29 @@ async def verify_admin_key(credentials: HTTPAuthorizationCredentials = Depends(s
     return credentials.credentials
 
 
-@router.get("/keys", response_model=List[APIKeyRecord])
+@router.get("/keys")
 async def list_keys(
     status: Optional[str] = None,
+    page: int = 1,
+    page_size: int = 50,
     _: str = Depends(verify_admin_key)
 ):
-    """获取所有 API Keys"""
-    keys = await key_manager.get_all_keys(status)
-    return keys
+    """获取所有 API Keys（分页）"""
+    all_keys = await key_manager.get_all_keys(status)
+    total = len(all_keys)
+    total_pages = (total + page_size - 1) // page_size
+    
+    start = (page - 1) * page_size
+    end = start + page_size
+    keys = all_keys[start:end]
+    
+    return {
+        "keys": keys,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": total_pages
+    }
 
 
 @router.post("/keys", response_model=dict)
@@ -79,8 +94,9 @@ async def import_keys_csv(
         if not row or row[0].startswith("#"):
             continue
         
-        key = row[0].strip()
-        if not key:
+        # 去除所有空格
+        key = row[0].strip().replace(" ", "").replace("\t", "")
+        if not key or not key.startswith("sk-"):
             continue
             
         balance = 0.24
@@ -110,8 +126,9 @@ async def import_keys_text(
     
     keys = []
     for line in text.strip().split("\n"):
-        key = line.strip()
-        if key and not key.startswith("#"):
+        # 去除所有空格
+        key = line.strip().replace(" ", "").replace("\t", "")
+        if key and key.startswith("sk-") and not key.startswith("#"):
             keys.append((key, default_balance))
     
     result = await key_manager.import_keys(keys)
@@ -128,6 +145,19 @@ async def delete_key(
     if success:
         return {"success": True}
     raise HTTPException(status_code=404, detail="Key not found")
+
+
+@router.delete("/keys/invalid/batch")
+async def delete_invalid_keys(_: str = Depends(verify_admin_key)):
+    """批量删除无效的 Keys（包含空格或不以 sk- 开头的）"""
+    all_keys = await db.get_all_keys()
+    deleted = 0
+    for key in all_keys:
+        # 检查是否包含空格或不以 sk- 开头
+        if ' ' in key.key or '\t' in key.key or not key.key.startswith('sk-'):
+            await db.delete_key(key.id)
+            deleted += 1
+    return {"deleted": deleted}
 
 
 @router.get("/stats", response_model=APIKeyStats)
