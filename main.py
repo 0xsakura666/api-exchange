@@ -177,9 +177,11 @@ async def catch_all(path: str):
 
 if __name__ == "__main__":
     import uvicorn
+    import os
+    port = int(os.environ.get("PORT", settings.port))
     uvicorn.run(
         "main:app",
-        host=settings.host,
-        port=settings.port,
-        reload=True
+        host="0.0.0.0",
+        port=port,
+        reload=False
     )
