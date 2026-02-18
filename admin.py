@@ -229,6 +229,18 @@ sync_status = {
 }
 
 
+@router.post("/keys/reset-invalid")
+async def reset_invalid_keys(_: str = Depends(verify_admin_key)):
+    """将所有 invalid 状态的 Key 重置为 active（用于修复错误标记）"""
+    from models import KeyStatus
+    keys = await db.get_all_keys("invalid")
+    count = 0
+    for key in keys:
+        await db.update_key_status(key.id, KeyStatus.ACTIVE)
+        count += 1
+    return {"reset": count}
+
+
 @router.post("/sync")
 async def sync_all_usage(_: str = Depends(verify_admin_key)):
     """同步所有 Keys 的远程余额（后台任务）"""
@@ -254,9 +266,9 @@ async def sync_all_usage(_: str = Depends(verify_admin_key)):
             batch_results = await asyncio.gather(*tasks, return_exceptions=True)
             
             for result in batch_results:
-                if result is True:
+                if result == "synced":
                     sync_status["synced"] += 1
-                elif result is False:
+                elif result == "invalid":
                     sync_status["invalid"] += 1
                 else:
                     sync_status["failed"] += 1

@@ -66,8 +66,8 @@ class UsageChecker:
                 error=str(e)
             )
     
-    async def sync_key_usage(self, key_record: APIKeyRecord) -> bool:
-        """同步单个 Key 的余额到数据库"""
+    async def sync_key_usage(self, key_record: APIKeyRecord) -> str:
+        """同步单个 Key 的余额到数据库，返回 'synced' / 'invalid' / 'failed'"""
         result = await self.check_single_key(key_record.key)
         
         if result.remaining is not None and result.valid:
@@ -75,13 +75,13 @@ class UsageChecker:
                 key_id=key_record.id,
                 balance=result.remaining
             )
-            return True
+            return "synced"
         elif not result.valid:
             from models import KeyStatus
             await db.update_key_status(key_record.id, KeyStatus.INVALID)
-            return False
+            return "invalid"
         
-        return False
+        return "failed"
     
     async def sync_all_keys(self, batch_size: int = 50) -> dict:
         """同步所有 Key 的余额（大批量并发）"""
