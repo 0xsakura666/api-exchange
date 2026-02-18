@@ -46,10 +46,19 @@ class UsageChecker:
                         total=total,
                         valid=True
                     )
-                    
+                
+                # 只有 401 才是真正无效的 Key
+                if sub_response.status_code == 401 or usage_response.status_code == 401:
+                    return UsageCheckResponse(
+                        key=key,
+                        valid=False,
+                        error=f"Invalid key (401)"
+                    )
+                
+                # 其他错误（限流、服务器错误等）不标记为无效
                 return UsageCheckResponse(
                     key=key,
-                    valid=False,
+                    valid=True,
                     error=f"API error: subscription={sub_response.status_code}, usage={usage_response.status_code}"
                 )
                 
