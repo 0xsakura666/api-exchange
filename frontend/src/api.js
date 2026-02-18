@@ -73,21 +73,6 @@ export async function checkModelPrice(model) {
   return response.data
 }
 
-export async function syncAllKeys() {
-  const response = await api.post('/admin/sync')
-  return response.data
-}
-
-export async function getSyncStatus() {
-  const response = await api.get('/admin/sync/status')
-  return response.data
-}
-
-export async function syncSingleKey(keyId) {
-  const response = await api.post(`/admin/keys/${keyId}/sync`)
-  return response.data
-}
-
 export async function getUpstreamModels() {
   const response = await api.get('/admin/models')
   return response.data

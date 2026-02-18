@@ -137,27 +137,12 @@
                   {{ status === 'all' ? '全部' : status === 'active' ? '可用' : status === 'exhausted' ? '已耗尽' : '无效' }}
                 </button>
               </div>
-              <div class="flex gap-2 items-center">
-                <span v-if="syncProgress && syncProgress.running" class="text-sm text-blue-600 font-medium">
-                  同步中: {{ syncProgress.synced }}/{{ syncProgress.total }}
-                </span>
-                <span v-else-if="syncResult" class="text-sm text-gray-500">
-                  完成: {{ syncResult.synced }}/{{ syncResult.total }}
-                </span>
-                <button
+              <button
                   @click="handleDeleteInvalidKeys"
                   class="px-4 py-1 bg-red-600 text-white rounded-md hover:bg-red-700"
                 >
                   清理无效Key
                 </button>
-                <button
-                  @click="handleSyncAll"
-                  :disabled="syncing"
-                  class="px-4 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
-                >
-                  {{ syncing ? '同步中...' : '同步远程余额' }}
-                </button>
-              </div>
             </div>
 
             <!-- Keys Table -->
@@ -202,13 +187,6 @@
                       </span>
                     </td>
                     <td class="px-4 py-3 text-sm space-x-2">
-                      <button
-                        @click="handleSyncSingle(key.id)"
-                        :disabled="key._syncing"
-                        :class="key._syncing ? 'text-gray-400' : 'text-blue-600 hover:text-blue-800'"
-                      >
-                        {{ key._syncing ? '同步中...' : '同步' }}
-                      </button>
                       <button
                         @click="handleDeleteKey(key.id)"
                         class="text-red-600 hover:text-red-800"
@@ -723,15 +701,12 @@ import {
   updatePricing,
   deletePricing,
   checkModelPrice,
-  syncAllKeys,
-  syncSingleKey,
   getUpstreamModels,
   deleteInvalidKeys,
   getTokens,
   createToken,
   toggleToken,
-  deleteToken,
-  getSyncStatus
+  deleteToken
 } from './api'
 
 const isLoggedIn = ref(false)
@@ -752,9 +727,6 @@ const testPrice = ref(null)
 const importText = ref('')
 const defaultBalance = ref(0.24)
 const importResult = ref(null)
-const syncing = ref(false)
-const syncResult = ref(null)
-const syncProgress = ref(null)
 const modelCategories = ref([])
 const modelsTotal = ref(0)
 const loadingModels = ref(false)
@@ -906,64 +878,6 @@ async function handleImport() {
     await loadData()
   } catch (e) {
     alert('导入失败: ' + e.message)
-  }
-}
-
-async function handleSyncAll() {
-  if (syncing.value) return
-  syncing.value = true
-  syncResult.value = null
-  syncProgress.value = null
-  
-  try {
-    await syncAllKeys()
-    pollSyncStatus()
-  } catch (e) {
-    alert('同步失败: ' + e.message)
-    syncing.value = false
-  }
-}
-
-async function pollSyncStatus() {
-  try {
-    const status = await getSyncStatus()
-    syncProgress.value = status
-    
-    if (status.running) {
-      setTimeout(pollSyncStatus, 1000)
-    } else {
-      syncing.value = false
-      syncResult.value = {
-        total: status.total,
-        synced: status.synced,
-        failed: status.failed,
-        invalid: status.invalid
-      }
-      await loadData()
-    }
-  } catch (e) {
-    console.error('Failed to get sync status:', e)
-    setTimeout(pollSyncStatus, 2000)
-  }
-}
-
-async function handleSyncSingle(keyId) {
-  const keyIndex = keys.value.findIndex(k => k.id === keyId)
-  if (keyIndex !== -1) {
-    keys.value[keyIndex]._syncing = true
-  }
-  
-  try {
-    const result = await syncSingleKey(keyId)
-    if (result.key && keyIndex !== -1) {
-      keys.value[keyIndex] = { ...result.key, _syncing: false }
-    }
-    await loadStats()
-  } catch (e) {
-    if (keyIndex !== -1) {
-      keys.value[keyIndex]._syncing = false
-    }
-    alert('同步失败: ' + e.message)
   }
 }
 

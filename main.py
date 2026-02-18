@@ -1,4 +1,3 @@
-import asyncio
 import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, HTTPException, Depends
@@ -41,37 +40,11 @@ async def verify_api_key(credentials: Optional[HTTPAuthorizationCredentials] = D
     )
 
 
-async def periodic_sync():
-    """后台定期同步用量"""
-    while True:
-        try:
-            await asyncio.sleep(settings.sync_interval)
-            if settings.auto_sync_usage:
-                await usage_checker.sync_all_keys(batch_size=5)
-        except asyncio.CancelledError:
-            break
-        except Exception:
-            pass
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期管理"""
     await db.connect()
-    
-    sync_task = None
-    if settings.auto_sync_usage:
-        sync_task = asyncio.create_task(periodic_sync())
-    
     yield
-    
-    if sync_task:
-        sync_task.cancel()
-        try:
-            await sync_task
-        except asyncio.CancelledError:
-            pass
-    
     await db.disconnect()
 
 
