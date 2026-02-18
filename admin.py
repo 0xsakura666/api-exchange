@@ -259,22 +259,27 @@ async def sync_all_usage(_: str = Depends(verify_admin_key)):
         keys = await db.get_all_keys()
         sync_status["total"] = len(keys)
         
-        batch_size = 50
+        batch_size = 10
         for i in range(0, len(keys), batch_size):
             batch = keys[i:i + batch_size]
             tasks = [usage_checker.sync_key_usage(key) for key in batch]
-            batch_results = await asyncio.gather(*tasks, return_exceptions=True)
-            
-            for result in batch_results:
-                if result == "synced":
-                    sync_status["synced"] += 1
-                elif result == "invalid":
-                    sync_status["invalid"] += 1
-                else:
-                    sync_status["failed"] += 1
+            try:
+                batch_results = await asyncio.wait_for(
+                    asyncio.gather(*tasks, return_exceptions=True),
+                    timeout=60.0
+                )
+                for result in batch_results:
+                    if result == "synced":
+                        sync_status["synced"] += 1
+                    elif result == "invalid":
+                        sync_status["invalid"] += 1
+                    else:
+                        sync_status["failed"] += 1
+            except asyncio.TimeoutError:
+                sync_status["failed"] += len(batch)
             
             if i + batch_size < len(keys):
-                await asyncio.sleep(0.2)
+                await asyncio.sleep(1.0)
         
         sync_status["running"] = False
     
