@@ -175,8 +175,8 @@
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                   <tr v-for="key in keys" :key="key.id">
-                    <td class="px-4 py-3 text-sm font-mono">
-                      {{ key.key.slice(0, 20) }}...{{ key.key.slice(-8) }}
+                    <td class="px-4 py-3 text-sm font-mono break-all">
+                      {{ key.key }}
                     </td>
                     <td class="px-4 py-3 text-sm">
                       <span :class="key.balance > 0.1 ? 'text-green-600' : 'text-orange-600'">
