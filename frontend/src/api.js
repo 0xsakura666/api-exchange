@@ -78,6 +78,11 @@ export async function syncAllKeys() {
   return response.data
 }
 
+export async function getSyncStatus() {
+  const response = await api.get('/admin/sync/status')
+  return response.data
+}
+
 export async function syncSingleKey(keyId) {
   const response = await api.post(`/admin/keys/${keyId}/sync`)
   return response.data

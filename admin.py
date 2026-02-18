@@ -220,12 +220,63 @@ async def check_model_price(
     return {"model": model, "price": price}
 
 
+sync_status = {
+    "running": False,
+    "total": 0,
+    "synced": 0,
+    "failed": 0,
+    "invalid": 0
+}
+
+
 @router.post("/sync")
-async def sync_all_usage(_: str = Depends(verify_admin_key)):
-    """同步所有 Keys 的远程余额"""
-    from usage_checker import usage_checker
-    result = await usage_checker.sync_all_keys()
-    return result
+async def sync_all_usage(background_tasks: "BackgroundTasks", _: str = Depends(verify_admin_key)):
+    """同步所有 Keys 的远程余额（后台任务）"""
+    from fastapi import BackgroundTasks
+    
+    if sync_status["running"]:
+        return {"message": "同步正在进行中", "status": sync_status}
+    
+    async def do_sync():
+        from usage_checker import usage_checker
+        sync_status["running"] = True
+        sync_status["synced"] = 0
+        sync_status["failed"] = 0
+        sync_status["invalid"] = 0
+        
+        keys = await db.get_all_keys()
+        sync_status["total"] = len(keys)
+        
+        import asyncio
+        batch_size = 50
+        for i in range(0, len(keys), batch_size):
+            batch = keys[i:i + batch_size]
+            tasks = [usage_checker.sync_key_usage(key) for key in batch]
+            batch_results = await asyncio.gather(*tasks, return_exceptions=True)
+            
+            for result in batch_results:
+                if result is True:
+                    sync_status["synced"] += 1
+                elif result is False:
+                    sync_status["invalid"] += 1
+                else:
+                    sync_status["failed"] += 1
+            
+            if i + batch_size < len(keys):
+                await asyncio.sleep(0.2)
+        
+        sync_status["running"] = False
+    
+    import asyncio
+    asyncio.create_task(do_sync())
+    
+    return {"message": "同步已启动", "status": sync_status}
+
+
+@router.get("/sync/status")
+async def get_sync_status(_: str = Depends(verify_admin_key)):
+    """获取同步状态"""
+    return sync_status
 
 
 @router.post("/keys/{key_id}/sync")

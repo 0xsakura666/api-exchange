@@ -138,8 +138,11 @@
                 </button>
               </div>
               <div class="flex gap-2 items-center">
-                <span v-if="syncResult" class="text-sm text-gray-500">
-                  同步: {{ syncResult.synced }}/{{ syncResult.total }}
+                <span v-if="syncProgress && syncProgress.running" class="text-sm text-blue-600 font-medium">
+                  同步中: {{ syncProgress.synced }}/{{ syncProgress.total }}
+                </span>
+                <span v-else-if="syncResult" class="text-sm text-gray-500">
+                  完成: {{ syncResult.synced }}/{{ syncResult.total }}
                 </span>
                 <button
                   @click="handleDeleteInvalidKeys"
@@ -726,7 +729,8 @@ import {
   getTokens,
   createToken,
   toggleToken,
-  deleteToken
+  deleteToken,
+  getSyncStatus
 } from './api'
 
 const isLoggedIn = ref(false)
@@ -749,6 +753,7 @@ const defaultBalance = ref(0.24)
 const importResult = ref(null)
 const syncing = ref(false)
 const syncResult = ref(null)
+const syncProgress = ref(null)
 const modelCategories = ref([])
 const modelsTotal = ref(0)
 const loadingModels = ref(false)
@@ -907,13 +912,37 @@ async function handleSyncAll() {
   if (syncing.value) return
   syncing.value = true
   syncResult.value = null
+  syncProgress.value = null
+  
   try {
-    syncResult.value = await syncAllKeys()
-    await loadData()
+    await syncAllKeys()
+    pollSyncStatus()
   } catch (e) {
     alert('同步失败: ' + e.message)
-  } finally {
     syncing.value = false
+  }
+}
+
+async function pollSyncStatus() {
+  try {
+    const status = await getSyncStatus()
+    syncProgress.value = status
+    
+    if (status.running) {
+      setTimeout(pollSyncStatus, 1000)
+    } else {
+      syncing.value = false
+      syncResult.value = {
+        total: status.total,
+        synced: status.synced,
+        failed: status.failed,
+        invalid: status.invalid
+      }
+      await loadData()
+    }
+  } catch (e) {
+    console.error('Failed to get sync status:', e)
+    setTimeout(pollSyncStatus, 2000)
   }
 }
 
