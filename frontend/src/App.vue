@@ -204,9 +204,10 @@
                     <td class="px-4 py-3 text-sm space-x-2">
                       <button
                         @click="handleSyncSingle(key.id)"
-                        class="text-blue-600 hover:text-blue-800"
+                        :disabled="key._syncing"
+                        :class="key._syncing ? 'text-gray-400' : 'text-blue-600 hover:text-blue-800'"
                       >
-                        同步
+                        {{ key._syncing ? '同步中...' : '同步' }}
                       </button>
                       <button
                         @click="handleDeleteKey(key.id)"
@@ -947,10 +948,21 @@ async function pollSyncStatus() {
 }
 
 async function handleSyncSingle(keyId) {
+  const keyIndex = keys.value.findIndex(k => k.id === keyId)
+  if (keyIndex !== -1) {
+    keys.value[keyIndex]._syncing = true
+  }
+  
   try {
-    await syncSingleKey(keyId)
-    await loadData()
+    const result = await syncSingleKey(keyId)
+    if (result.key && keyIndex !== -1) {
+      keys.value[keyIndex] = { ...result.key, _syncing: false }
+    }
+    await loadStats()
   } catch (e) {
+    if (keyIndex !== -1) {
+      keys.value[keyIndex]._syncing = false
+    }
     alert('同步失败: ' + e.message)
   }
 }
